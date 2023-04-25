@@ -1,0 +1,932 @@
+---
+title: "Banks-SP"
+output:
+  word_document: default
+  html_document: default
+date: "2022-11-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(sp)
+require(spdep)
+require(sf)
+require(lwgeom) # for st_make_valid
+require(RColorBrewer) # for nice color ramps
+require(tidyverse)
+require(tmap)
+require(tripack)
+require(ggplot2)
+require(ggpubr)
+require(jtools)
+require(smerc) 
+require(gstat)
+require(knitr)
+require(MASS)
+require(corrplot)
+require(tmap)
+require(animation)
+require(zoo)
+require(readODS)
+require(tidyquant)
+require(spdep)
+require(tmap)
+require(tidyquant)
+```
+
+
+```{r}
+library(factoextra)
+library(car)
+library(tab)
+library(sjPlot)
+library(texreg)
+library(ggpubr)
+library(rgdal)
+library(terra)
+library(data.table)
+library(gapminder)
+library(tidyquant)
+library(plotly)
+library(ARPALData)
+library(shinyjs)
+library(shiny)
+library(tmaptools)
+library(plotly)
+library(incidence)
+library(xts)
+library(bigmemory)
+library(ff)
+library(plyr)
+library(ggplot2)
+library(grid)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+library(dygraphs)
+library(zoo)
+library(heatmaply)
+library(ggcorrplot)
+library(openair)
+library(rcompanion)
+library(lattice)
+library(aplpack)
+library(tcltk)
+library(maps)
+library(mapview)
+library(vars)
+library(sjPlot)
+library(sjmisc)
+library(likert)
+library(expss)
+library(openxlsx)
+library(strucchange)
+library(ltm)
+library(corrr)
+library(modeest)
+library(tableone)
+library(Hmisc)
+library(modelsummary)
+library(foreign) 
+library(lavaan)
+library(corrr)
+library(gtsummary)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+bank<-read.csv("~/Lauren/Banks SP publication/Data/bank.csv")
+knowid<-read.csv("~/Lauren/Banks SP publication/Data/knowid.csv")
+demographic<-read.csv("~/Lauren/Banks SP publication/Data/demographic.csv")
+```
+
+
+```{r}
+#Descriptive statistis
+#conversting variables into factor to generate descriptive statistics.
+demographic$age<-as.factor(demographic$age)
+demographic$school<-as.factor(demographic$school)
+demographic$job_recoded<-as.factor((demographic$job_recoded))
+demographic$participantorparent<-as.factor(demographic$participantorparent)
+
+#table 1 descriptive statistics (Colombia & Nicaragua)
+table(demographic$age)
+prop.table(table(demographic$age))
+table(demographic$job_recoded)
+prop.table(table(demographic$job_recoded))
+table(demographic$gender)
+prop.table(table(demographic$gender))
+demographic$job<-ifelse(demographic$job_recoded == "housewife","Housewife","other")
+demographic$job<-as.factor(demographic$job)
+table(demographic$school)
+prop.table(table(demographic$school))
+table(demographic$job)
+prop.table(table(demographic$job))
+
+table(demographic$participantorparent)
+prop.table(demographic$participantorparent)
+
+inre<-bank[46:48]
+descr(inre)
+write.xlsx(descr(inre),file="toto.xlsx")
+
+
+#table 1 descriptive statistics Colombia 
+
+C<-demographic%>%filter(grepl('Colombia',country))
+table(C$age)
+prop.table(table(C$age))
+table(C$gender)
+prop.table(table(C$gender))
+table(C$school)
+prop.table(table(C$school))
+table(C$job_recoded)
+prop.table(table(C$job_recoded))
+table(C$participantorparent)
+
+#table 1 descriptive statistics Nicaragua
+
+N<-demographic%>%filter(grepl('Nicaragua',country))
+table(N$age)
+prop.table(table(N$age))
+table(N$gender)
+prop.table(table(N$gender))
+table(N$school)
+prop.table(table(N$school))
+table(N$job_recoded)
+prop.table(table(N$job_recoded))
+table(N$participantorparent)
+
+
+```
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+#renaming the variables in the main dataset
+names(bank)[1] <- paste("ID_formerge")
+names(bank)[2]<-paste("Participant")
+names(bank)[4]<-paste("country")
+
+know<-bank[18:33]
+
+#table 3 distribution of knowledge respones and item difficulty 
+table(bank$know1_spendmoney)
+prop.table(table(bank$know1_spendmoney))
+
+table(bank$know2_access)
+prop.table(table(bank$know2_access))
+
+table(bank$know3_medicalrecords)
+prop.table(table(bank$know3_medicalrecords))
+
+table(bank$know4_pharmacy)
+prop.table(table(bank$know4_pharmacy))
+
+table(bank$know5_infoprivacy)
+prop.table(table(bank$know5_infoprivacy))
+
+table(bank$know6_sharing)
+prop.table(table(bank$know6_sharing))
+
+table(bank$know1_spendmoney)
+prop.table(table(bank$know1_spendmoney))
+
+table(bank$know7_police)
+prop.table(table(bank$know7_police))
+
+table(bank$know8_infoselling)
+prop.table(table(bank$know8_infoselling))
+
+table(bank$know9_insurancecompanies)
+prop.table(table(bank$know9_insurancecompanies))
+
+table(bank$know10_riskofdiseaseinfo)
+prop.table(table(bank$know10_riskofdiseaseinfo))
+
+table(bank$know11_familygetsinfo)
+prop.table(table(bank$know11_familygetsinfo))
+
+table(bank$know12_earnmoney)
+prop.table(table(bank$know12_earnmoney))
+
+table(bank$know13_ownership)
+prop.table(table(bank$know13_ownership))
+
+table(bank$know14_retrive)
+prop.table(table(bank$know14_retrive))
+
+table(bank$know15_clone)
+prop.table(table(bank$know15_clone))
+
+table(bank$know16_stopparticipating)
+prop.table(table(bank$know16_stopparticipating))
+
+
+#Attitude internal consistency
+att_interitem<- correlate(attN,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+att_interitem
+mean(att_interitem)
+att$score<-rowMeans(att)
+att_itemtotal <- att %>% correlate(method = "spearman") %>% focus(score)
+mean(att_itemtotal$score)
+write.csv(att_itemtotal, file = "att_itemtotal.csv")
+
+#Intention internal consistency
+ine<-bank[46:48]
+ine_interitem<- correlate(ine,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+ine_interitem
+mean(ine_interitem)
+ine$score<-rowMeans(ine)
+ine_itemtotal <- ine %>% correlate(method = "spearman") %>% focus(score)
+mean(inN_itemtotal$score)
+write.csv(ine_itemtotal, file = "ine_itemtotal.csv")
+
+
+#self efficacy internal consistency
+se<-bank[34:45]
+se_interitem<- correlate(se,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+mean(se_interitem)
+se$score<-rowMeans(se)
+se_itemtotal <- seC %>% correlate(method = "spearman") %>% focus(score)
+mean(se_itemtotal$score)
+write.csv(se_itemtotal, file = "se_itemtotal.csv")
+
+write.xlsx(descr(att), file = "ATT.xlsx")
+write.xlsx(descr(se), file = "SE.xlsx")
+write.xlsx(descr(ine), file = "IN.xlsx")
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+myfun_cat <- function(x) {
+  # Count the number of missing values
+  nmiss <- sum(is.na(x))
+  # Frequency
+  n     <- table(x)
+  # Proportion
+  p     <- prop.table(table(n))
+  # Putting it together
+  OUT   <- cbind(n, p)
+  # Add nmiss, but first pad to have the right number of rows
+  nmiss <- c(nmiss, rep(NA, nrow(OUT)-1))
+  OUT   <- cbind(OUT, nmiss)
+  return(OUT)
+}
+
+
+myfun_cat(know)
+
+ftable(prop.table(bank$know1_spendmoney))
+
+summarise(bank, distinct = n_distinct(know1_spendmoney))
+
+var_lab(bank$know1_spendmoney)<-"Requires spending money"
+var_lab(bank$know2_access)<-"Samples are accessible to everyone"
+var_lab(bank$know3_medicalrecords)<-"Medical records are updated after investigations"
+var_lab(bank$know4_pharmacy)<-"Samples are sold to pharmaceutical companies"
+var_lab(bank$know5_infoprivacy)<-"Persons informations is kept private"
+var_lab(bank$know6_sharing)<-"Samples cannot be shared with other organizations"
+var_lab(bank$know7_police)<-"Police have right to obtain samples legally"
+var_lab(bank$know8_infoselling)<-"Samples can be sold to anyone"
+var_lab(bank$know9_insurancecompanies)<-"Insurance companies can obtain samples legally"
+var_lab(bank$know10_riskofdiseaseinfo)<-"Person is contacted in case there is a risk of disease"
+var_lab(bank$know11_familygetsinfo)<-"Persons family can get information regarding the sample donated"
+var_lab(bank$know12_earnmoney)<-"Donated samples are sold to make money"
+var_lab(bank$know13_ownership)<-"Person loses ownership of sample after donation"
+var_lab(bank$know14_retrive)<-"Person can retrive sample after donating"
+var_lab(bank$know15_clone)<-"Sample can be used for cloning"
+var_lab(bank$know16_stopparticipating)<-"Person can choose to stop participating in study at any point"
+```
+
+```{r}
+#Wilcoxson rank sum test comparing attitudes in Colombia and Nicaragua 
+modellist<-list()
+for(i in 6:17){
+    fmla <- formula(paste(names(bank)[i], "~ country"))
+    model[[i]]<-wilcox.test(fmla, data = bank, paired = FALSE)
+}
+
+modellist
+
+#Wilcoxson rank sum test comparing  self efficacy in Colombia and Nicaragua 
+modellist3<-list()
+for(i in 34:45){
+    fmla <- formula(paste(names(bank)[i], "~ country"))
+    modellist3[[i]]<-wilcox.test(fmla, data = bank, paired = FALSE)
+}
+modellist3
+
+#Wilcoxson rank sum test comparing  Intentions in Colombia and Nicaragua 
+mode<-list()
+for(i in 46:48){
+    fmla <- formula(paste(names(bank)[i], "~ country"))
+    mode[[i]]<-wilcox.test(fmla, data = bank, paired = FALSE)
+}
+mode
+
+```
+
+```{r}
+#Combined Inter-item, item-total and cronbachs alpha for Colombia & Nicaragua
+
+
+#Attitude 
+att<-bank[6:17]
+descr(attC)
+cronbach.alpha(att)
+att_interitem<- correlate(att,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+att_interitem
+mean(att_interitem)
+write.csv(att_interitem, file = "att1_interitem.csv")
+mean(att_interitem)
+att$score<-rowMeans(att)
+att_itemtotal <- att %>% correlate(method = "spearman") %>% focus(score)
+att_itemtotal
+write.csv(att_itemtotal, file = "att1_itemtotal.csv")
+mean(att_itemtotal$score)
+
+
+#Intention
+inb<-bank[46:47]
+cronbach.alpha(inb)
+inb_interitem<- correlate(inb,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+mean(inb_interitem)
+inb$score<-rowMeans(inb)
+inb_itemtotal <- inb %>% correlate(method = "spearman") %>% focus(score)
+mean(inb_itemtotal$score)
+cronbach.alpha(inb)
+write.csv(inb_itemtotal, file = "inb_itemtotal.csv")
+
+#Self-efficacy
+se<-bank[34:45]
+cronbach.alpha(se)
+se_interitem<- correlate(se,method = "pearson")%>%select(-term)%>%colMeans(na.rm = TRUE)
+se_interitem
+mean(se_interitem)
+se$score<-rowMeans(se)
+se_itemtotal <- se %>% correlate(method = "pearson") %>% focus(score)
+mean(se_itemtotal$score)
+write.csv(se_itemtotal, file = "se_itemtotal.csv")
+write.csv(se_interitem, file = "se_interitem.csv")
+
+```
+
+
+
+#Colombia
+
+```{r}
+#Colombia 
+
+colo<-subset(bank,bank$country=="Colombia-Bucaramanga")
+
+attC<-colo[,c(6:17,49)]
+attC$attsumy<-rowSums(attC[,c(1:12)])
+chisq.test(attC$cognitive,attC$attsumy)
+
+table(attC$cognitive)
+
+t.test(attsumy~cognitive, data = attC)
+
+#Inter-item, item-total and cronbachs alpha for Colombia
+
+#Attitude 
+attC<-colo[,c(6,7,8,10,12,13,14,15,16,17)]
+
+cronbach.alpha(attC)
+attC_interitem<- correlate(attC,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+attC_interitem
+mean(att_interitem)
+write.csv(attC_interitem, file = "attC_interitem.csv")
+mean(attC_interitem)
+attC$score<-rowMeans(attC)
+attC_itemtotal <- attC %>% correlate(method = "spearman") %>% focus(score)
+attC_itemtotal
+write.csv(attC_itemtotal, file = "attC_itemtotal.csv")
+write.s
+mean(attC_itemtotal$score)
+
+
+#Receptivity
+recC<-colo[48]
+descr(recC)
+
+#Intention
+inC<-colo[46:47]
+cronbach.alpha(inC)
+inC_interitem<- correlate(inC,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+mean(inC_interitem)
+inC$score<-rowMeans(inC)
+inC_itemtotal <- inC %>% correlate(method = "spearman") %>% focus(score)
+mean(inC_itemtotal$score)
+cronbach.alpha(inC)
+write.csv(inC_itemtotal, file = "inC_itemtotal.csv")
+
+mean(inC$Int1_urine)
+sd(inC$Int1_urine)
+mean(inC$Int2_blood)
+sd(inC$Int2_blood)
+
+
+se<-bank[34:45]
+secr <- rcorr(as.matrix(seC), type="spearman")
+secr
+
+#Self-efficacy
+seC<-colo[34:45]
+cronbach.alpha(seC)
+seC_interitem<- correlate(seC,method = "pearson")%>%select(-term)%>%colMeans(na.rm = TRUE)
+seC_interitem
+mean(seC_interitem)
+seC$score<-rowMeans(seC)
+seC_itemtotal <- seC %>% correlate(method = "pearson") %>% focus(score)
+mean(seC_itemtotal$score)
+write.csv(seC_itemtotal, file = "seC_itemtotal.csv")
+write.csv(seC_interitem, file = "seC_interitem.csv")
+
+
+knowC<-colo[18:33]
+CC<-sapply(knowC,table)
+write.xlsx(as.data.frame(CC), file = "coloK.xlsx")
+
+x<-descr(att)%>%print(silent=TRUE)
+write.xlsx(descr(att),file = "des1.xlsx")
+
+
+seC<-colo[34:45]
+
+secr <- rcorr(as.matrix(seC), type="spearman")
+write.xlsx(as.data.frame(result$r), file = "secr.xlsx")
+cronbach.alpha(seC)
+write.csv(descr(seC), file = "ColoSE.csv")
+
+inreC<-colo[46:48]
+
+descr(inreC)
+```
+
+
+#Nic
+
+```{r}
+Nic<-subset(bank,bank$country=="Nicaragua")
+
+
+attN<-Nic[,c(6:17,49)]
+
+
+descr(attN)
+
+recN<-bank[48]
+descr(recN)
+
+cronbach.alpha(attN)
+attN_interitem<- correlate(attN,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+attN_interitem
+write.csv(attN_interitem, file = "attN_interitem.csv")
+mean(attN_interitem)
+attN$score<-rowMeans(attN)
+attN_itemtotal <- attN %>% correlate(method = "spearman") %>% focus(score)
+mean(attN_itemtotal$score)
+write.csv(attN_itemtotal, file = "attN_itemtotal.csv")
+
+
+inN<-Nic[46:47]
+datasummary_correlation(inN,output = "innr.docx",method = "spearman")
+cronbach.alpha(inN)
+
+inN_interitem<- correlate(inN,method = "spearman")%>%select(-term)%>%colMeans(na.rm = TRUE)
+inN_interitem
+mean(inN_interitem)
+inN$score<-rowMeans(inN)
+inN_itemtotal <- inN %>% correlate(method = "spearman") %>% focus(score)
+mean(inN_itemtotal$score)
+write.csv(inN_itemtotal, file = "inN_itemtotal.csv")
+
+
+seN<-Nic[34:45]
+datasummary_correlation(seN,output = "senr.docx",method = "spearman")
+cronbach.alpha(seN)
+write.xlsx(descr(seN), file = "NicSE.xlsx")
+
+seN_interitem<- correlate(seN,method = "pearson")%>%select(-term)%>%colMeans(na.rm = TRUE)
+seN_interitem
+mean(seN_interitem)
+seN$score<-rowMeans(seN)
+seN_itemtotal <- seN %>% correlate(method = "pearson") %>% focus(score)
+mean(seN_itemtotal$score)
+write.csv(seN_itemtotal, file = "seN_itemtotal.csv")
+write.csv(seN_interitem, file = "seN_interitem.csv")
+
+
+
+inN<-Nic[46:48]
+
+datasummary_correlation(attC,output = "attcr.docx",method = "spearman")
+cronbach.alpha(attC)
+
+
+
+write.xlsx(descr(inN), file = "intN.xlsx")
+
+descr(attN)
+write.xlsx(descr(attN), file = "NicA.xlsx")
+
+knowN<-Nic[18:33]
+sapply(knowN,table)
+NN<-sapply(knowN,table, na.rm=TRUE )
+dat
+write.xlsx(NN, file = "NicK.xlsx")
+
+
+myfun_cat <- function(x) {
+  # Count the number of missing values
+  nmiss <- sum(is.na(x))
+  # Frequency
+  n     <- table(x)
+  # Proportion
+  p     <- prop.table(table(n))
+  # Putting it together
+  OUT   <- cbind(n, p)
+  return(OUT)
+}
+
+myfun_cat(knowN)
+
+```
+
+```{r}
+
+#knowledge item difficulty, discrimination and reliability 
+knowidp<-knowid[2:17]
+
+
+difficulty<-colMeans(knowidp)
+difficulty
+mean(difficulty)
+id<-item_difficulty(knowidp)
+
+
+knowC<-colo[,c(18:33)]
+knowN<-Nic[,c(18:33)]
+idC<-item_difficulty(knowC)
+idN<-item_difficulty(knowN)
+
+
+write.csv(idN, file = "idN.csv")
+
+
+#item discrimination 
+X <- rowSums(knowidp) # total score
+
+discrimination <- numeric(ncol(knowidp))  # outcome vector
+for(i in 1:ncol(knowidp)){
+  discrimination[i] <- cor(knowidp[,i], X) # Pearson correlation between the i-th item score and the total score
+}
+discrimination
+
+#item score SD
+item_sd <- sqrt(difficulty * (1-difficulty))
+item_sd
+
+#item reliability 
+item_rel <- item_sd * discrimination
+round(item_rel, 2) 
+
+iA <- itemAnalysis(knowidp, hardFlag=.25, pBisFlag=.15)
+iA$itemReport
+
+t<-item_reliability(knowidp)
+t
+reliability(knowidp)
+
+str(reliability(knowidp))
+
+
+#Colombia knowledge item difficulty, discrimination and reliability 
+knowidpC<-knowidp[c(1:64),]
+item_difficulty(knowidpC)
+table(knowidpC$know10_riskofdiseaseinfo)
+table(knowidpC$know7_police)
+difficultyC<-colMeans(knowidpC)
+difficultyC
+mean(difficultyC)
+
+#Nicaragua knowledge item difficulty, discrimination and reliability 
+
+knowidpN<-knowidp[c(65:124),]
+item_difficulty(knowidpN)
+table(knowidpN$know10_riskofdiseaseinfo)
+table(knowidpN$know13_ownership)
+difficultyN<-colMeans(knowidpN)
+difficultyN
+mean(difficultyN)
+
+```
+#spider chart
+
+```{r}
+spider<-read.csv("~/Lauren/Spider chart/spider.csv")
+spider2<-read.csv("~/Lauren/Spider chart/spider2.csv")
+names(spider)[3] <- paste("Cohort location")
+
+spider<-spider[-49,]
+
+boxplot(spider$women)
+??boxplot
+class(spider$N.children)
+
+ggplot(spider, aes(women)) + geom_boxplot()+coord_cartesian(xlim = c(1000,100000))+coord_flip()
+ggplot(spider, aes(children), na.rm=FALSE) + geom_boxplot()+coord_cartesian(xlim = c(1000,100000))+coord_flip()
+
+```
+
+```{r}
+spider$country <- as.factor(word(spider$`Cohort location`, 1, sep = " -- "))
+
+spider$women <- as.numeric(sapply(strsplit(spider$N.women, ","), "[[", 1))
+spider$children <- as.numeric(sapply(strsplit(spider$N.children, ","), "[[", 1))
+
+spider$enrol<- as.numeric(sapply(strsplit(spider$Year.enrollment.started.year.enrollment.closed, "-"), "[[", 1))
+
+```
+
+```{r}
+sp1<-spider[,c(19,20,21,22)]
+sp1<-as.data.frame(sp1)
+
+sp_wide <- dplyr::arrange(sp1, enrol, .by_group = TRUE) %>%
+  pivot_wider(names_from = country, values_from = women, id_cols = enrol)
+write.csv(sp1,"~/Lauren/Spider chart/spider2.csv")
+spider2<-spider2[,-1]
+radarchart(spider2)
+sp1$child <- replace_na(sp1$children, value = 0)
+rm(sp1)
+```
+
+
+```{r}
+plot_df <- sp1 %>%
+  group_by(country) %>%
+  dplyr::summarise(
+    sum_length = sum(women),
+    mean_children = mean(as.numeric(child))
+  ) %>%
+  mutate(mean_children = round(mean_children, digits = 0))
+```
+
+```{r}
+plt <- ggplot(plot_df) +
+  # Make custom panel grid
+  geom_hline(
+    aes(yintercept = y), 
+    data.frame(y = c(0:3) * 1000),
+    color = "lightgrey"
+  ) + 
+  # Add bars to represent the cumulative track lengths
+  # str_wrap(region, 5) wraps the text so each line has at most 5 characters
+  # (but it doesn't break long words!)
+  geom_col(
+    aes(
+      x = reorder(str_wrap(country, 5), sum_length),
+      y = sum_length,
+      fill = mean_children
+    ),
+    position = "dodge2",
+    show.legend = TRUE,
+    alpha = .9
+  ) +
+  
+  # Add dots to represent the mean gain
+  geom_point(
+    aes(
+      x = reorder(str_wrap(country, 5),sum_length),
+      y = mean_children
+    ),
+    size = 3,
+    color = "gray12"
+  ) +
+  
+  # Lollipop shaft for mean gain per region
+  geom_segment(
+    aes(
+      x = reorder(str_wrap(country, 5), mean_children),
+      y = 0,
+      xend = reorder(str_wrap(country, 5), mean_children),
+      yend = 3000
+    ),
+    linetype = "dashed",
+    color = "gray12"
+  ) + 
+  
+  # Make it circular!
+  coord_polar()
+
+plt
+```
+
+```{r}
+plt <- plt +
+  # Annotate the bars and the lollipops so the reader understands the scaling
+  annotate(
+    x = 11, 
+    y = 1300,
+    label = "Mean Elevation Gain\n[FASL]",
+    geom = "text",
+    angle = -67.5,
+    color = "gray12",
+    size = 2.5,
+    family = "Bell MT"
+  ) +
+  annotate(
+    x = 11, 
+    y = 3150,
+    label = "Cummulative Length [FT]",
+    geom = "text",
+    angle = 23,
+    color = "gray12",
+    size = 2.5,
+    family = "Bell MT"
+  ) +
+  # Annotate custom scale inside plot
+  annotate(
+    x = 11.7, 
+    y = 1100, 
+    label = "1000", 
+    geom = "text", 
+    color = "gray12", 
+    family = "Bell MT"
+  ) +
+  annotate(
+    x = 11.7, 
+    y = 2100, 
+    label = "2000", 
+    geom = "text", 
+    color = "gray12", 
+    family = "Bell MT"
+  ) +
+  annotate(
+    x = 11.7, 
+    y =3100, 
+    label = "3000", 
+    geom = "text", 
+    color = "gray12", 
+    family = "Bell MT"
+  ) +
+  # Scale y axis so bars don't start in the center
+  scale_y_continuous(
+    limits = c(-1500, 3500),
+    expand = c(0, 0),
+    breaks = c(0, 1000, 2000, 3000)
+  ) + 
+  # New fill and legend title for number of tracks per region
+  scale_fill_gradientn(
+    "Amount of Tracks",
+     colours = c( "#6C5B7B","#C06C84","#F67280","#F8B195")
+  ) +
+  # Make the guide for the fill discrete
+  guides(
+    fill = guide_colorsteps(
+      barwidth = 15, barheight = .5, title.position = "top", title.hjust = .5
+    )
+  ) +
+  theme(
+    # Remove axis ticks and text
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.y = element_blank(),
+    # Use gray text for the region names
+    axis.text.x = element_text(color = "gray12", size = 12),
+    # Move the legend to the bottom
+    legend.position = "bottom",
+  )
+```
+
+
+```{r}
+hike_data <- readr::read_rds("~/Lauren/Spider chart/hike_data.rds")
+
+hike_data$region <- as.factor(word(hike_data$location, 1, sep = " -- "))
+hike_data$length_num <- as.numeric(sapply(strsplit(hike_data$length, " "), "[[", 1))
+
+class(hike_data$length)
+
+sp1$child <- replace_na(sp1$children, value = 0)
+```
+
+```{r}
+plot_df <- sp1 %>%
+  group_by(country) %>%
+  dplyr::summarise(
+    sum_length = sum(women),
+    mean_children = mean(as.numeric(child))
+  ) %>%
+  mutate(mean_children = round(mean_children, digits = 0))
+```
+
+```{r}
+set.seed(12345)
+
+data <- read_rds("StormGraph.RDS")
+num_nodes<-10
+
+
+my_sociomatrix <- matrix(round(runif(num_nodes*num_nodes)), # edge values
+                         nrow = num_nodes, #nrow must be same as ncol
+                         ncol = num_nodes)
+diag(my_sociomatrix) <- 0
+
+net <- as.network(x = my_sociomatrix, # the network object
+                  directed = TRUE, # specify whether the network is directed
+                  loops = FALSE, # do we allow self ties (should not allow them)
+                  matrix.type = "adjacency" # the type of input
+                  )
+
+network.vertex.names(net) <- LETTERS[1:10]
+
+network.vertex.names(net) <- c("Susan","Rachel","Angela","Carly","Stephanie","Tom","Mike","Tony","Matt","Steven")
+
+
+
+gender <- c(rep("Female",num_nodes/2),rep("Male",num_nodes/2))
+# Take a look at our variable
+print(gender)
+
+set.vertex.attribute(net, # the name of the network object
+                     "Gender", # the name we want to reference the variable by in that object
+                     gender # the value we are giving that variable
+                     ) 
+
+```
+
+
+
+```{r}
+G <- upgrade_graph(karate)
+L <- layout.circle(G)
+vs <- V(G)
+
+es <- as.data.frame(get.edgelist(G))
+
+
+
+
+```
+```{r}
+#lowess plot
+#combined
+know<-bank[,c(3,18:33)]
+att<-bank[,c(3,6:17)]
+att$meana<-apply(att[2:13], 1,mean,na.rm = TRUE)
+
+var_names <- grep("know", names(know), value = TRUE)
+
+for(var in var_names){
+  know[[var]] <- ifelse(know[[var]] == 1, 1, 0)
+}
+
+know$meank<-apply(know[2:17],1,mean,na.rm=TRUE)
+
+lowAK<-left_join(att,know,by = c("ID_formerge" = "ID_formerge"))
+
+l<-lowess(lowAK$meank,lowAK$meana)
+
+plot(lowAK$meank,lowAK$meana, main = "lowess(lowAK)")
+
+
+
+
+
+lines(lowess(lowAK$meank,lowAK$meana, color = 'purple'))
+
+
+
+
+
+#colombia
+
+
+
+#Nicaragua
+
+```
+
+
+
+```{r}
+lines(l, col="red")
+```
+
